@@ -1,0 +1,10 @@
+{
+  "name": "goggins-mode",
+  "description": "No shortcuts. No lazy code. Who's gonna carry the boats? Eliminates lazy AI coding patterns through Goggins-voiced rules and deterministic hooks.",
+  "version": "1.0.0",
+  "author": { "name": "Alan Campbell" },
+  "homepage": "https://github.com/alancampbell/goggins-mode",
+  "repository": "https://github.com/alancampbell/goggins-mode",
+  "license": "MIT",
+  "keywords": ["discipline", "code-quality", "hooks", "goggins", "no-shortcuts"]
+}
