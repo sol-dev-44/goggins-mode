@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# no-lazy-code — PostToolUse hook for goggins-mode
+# Catches lazy patterns in code written by the agent.
+# GOGGINS_MODE=soft (default): warns via stdout JSON, exits 0
+# GOGGINS_MODE=hard: blocks via exit 2, stderr shown to agent
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib/goggins-quote.sh"
+
+MODE="${GOGGINS_MODE:-soft}"
+
+# Read hook input from stdin
+INPUT=$(cat)
+
+# Extract tool name
+TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null || echo "")
+
+# Only check Write and Edit tools
+if [[ "$TOOL_NAME" != "Write" && "$TOOL_NAME" != "Edit" ]]; then
+  exit 0
+fi
+
+# Extract the content that was written/edited
+# For Write: tool_input.content
+# For Edit: tool_input.new_string
+if [[ "$TOOL_NAME" == "Write" ]]; then
+  CONTENT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('content',''))" 2>/dev/null || echo "")
+else
+  CONTENT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('new_string',''))" 2>/dev/null || echo "")
+fi
+
+# Also get the file path for context
+FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
+
+# Skip non-code files (markdown, json config, etc.)
+case "$FILE_PATH" in
+  *.md|*.txt|*.json|*.yaml|*.yml|*.toml|*.cfg|*.ini|*.env*|*.lock)
+    exit 0
+    ;;
+esac
+
+# Define lazy patterns to detect
+# Each pattern: regex%category%description  (% delimiter to avoid conflict with | in regex)
+LAZY_PATTERNS=(
+  '// TODO|# TODO|# FIXME|// FIXME|<!-- TODO|<!-- FIXME%laziness%TODO/FIXME placeholder detected'
+  'NotImplementedError|raise NotImplemented%laziness%NotImplementedError is a placeholder, not an implementation'
+  'pass$|\.\.\.$|^\s*\.\.\.\s*$%laziness%Empty placeholder detected (pass/...)'
+  'for brevity|for the sake of brevity|left as exercise|left as an exercise%excuses%Hand-waving detected'
+  'similar to above|same as above|as shown above%excuses%"Similar to above" is not code'
+  'console\.log|print\(f?["\x27]debug|print\(f?["\x27]DEBUG%shortcuts%Debug logging left in code'
+)
+
+VIOLATIONS=()
+
+for pattern_line in "${LAZY_PATTERNS[@]}"; do
+  IFS='%' read -r regex category description <<< "$pattern_line"
+  if echo "$CONTENT" | grep -qiE "$regex" 2>/dev/null; then
+    VIOLATIONS+=("${category}%${description}")
+  fi
+done
+
+# If no violations found, allow
+if [ ${#VIOLATIONS[@]} -eq 0 ]; then
+  exit 0
+fi
+
+# Build violation report
+FIRST_CATEGORY=""
+REPORT=""
+for violation in "${VIOLATIONS[@]}"; do
+  IFS='%' read -r cat desc <<< "$violation"
+  REPORT="${REPORT}  - ${desc}\n"
+  if [ -z "$FIRST_CATEGORY" ]; then
+    FIRST_CATEGORY="$cat"
+  fi
+done
+
+QUOTE=$(goggins_quote "$FIRST_CATEGORY")
+
+if [[ "$MODE" == "hard" ]]; then
+  # Hard mode: block the action
+  echo -e "\n============================================" >&2
+  echo "  GOGGINS MODE [HARD] — ACTION BLOCKED" >&2
+  echo "============================================" >&2
+  echo -e "  \"${QUOTE}\"" >&2
+  echo "============================================" >&2
+  echo -e "\nViolations in ${FILE_PATH}:" >&2
+  echo -e "$REPORT" >&2
+  echo "Fix these issues. No shortcuts. No excuses." >&2
+  exit 2
+else
+  # Soft mode: warn but allow
+  # Output additional context via JSON stdout
+  ESCAPED_QUOTE=$(echo "$QUOTE" | sed 's/"/\\"/g')
+  ESCAPED_REPORT=$(echo -e "$REPORT" | sed 's/"/\\"/g' | tr '\n' ' ')
+  printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"GOGGINS MODE WARNING: %s Violations: %s Fix these before you move on."}}\n' "$ESCAPED_QUOTE" "$ESCAPED_REPORT"
+  exit 0
+fi
