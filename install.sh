@@ -107,7 +107,7 @@ if [ -n "$REPO_DIR" ] && [ -d "${REPO_DIR}/hooks" ]; then
   cp "${REPO_DIR}/hooks/lib/goggins-quote.sh" "${TARGET_DIR}/.goggins/hooks/lib/"
   cp "${REPO_DIR}/hooks/lib/quotes.json" "${TARGET_DIR}/.goggins/hooks/lib/"
 else
-  BASE_URL="https://raw.githubusercontent.com/alancampbell/goggins-mode/main"
+  BASE_URL="https://raw.githubusercontent.com/sol-dev-44/goggins-mode/main"
   curl -fsSL "${BASE_URL}/hooks/no-lazy-code" -o "${TARGET_DIR}/.goggins/hooks/no-lazy-code"
   curl -fsSL "${BASE_URL}/hooks/no-lazy-commits" -o "${TARGET_DIR}/.goggins/hooks/no-lazy-commits"
   curl -fsSL "${BASE_URL}/hooks/read-before-write" -o "${TARGET_DIR}/.goggins/hooks/read-before-write"
