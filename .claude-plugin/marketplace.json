@@ -1,0 +1,17 @@
+{
+  "name": "goggins-mode-marketplace",
+  "owner": {
+    "name": "sol-dev-44"
+  },
+  "plugins": [
+    {
+      "name": "goggins-mode",
+      "source": {
+        "source": "github",
+        "repo": "sol-dev-44/goggins-mode"
+      },
+      "description": "No shortcuts. No lazy code. Who's gonna carry the boats? Eliminates lazy AI coding patterns through Goggins-voiced rules and deterministic hooks.",
+      "version": "1.0.0"
+    }
+  ]
+}
