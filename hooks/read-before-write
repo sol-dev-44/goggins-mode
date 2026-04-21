@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# read-before-write — PreToolUse hook for goggins-mode
+# Checks if the agent read a file before trying to write/edit it.
+# GOGGINS_MODE=soft (default): warns via additionalContext, exits 0
+# GOGGINS_MODE=hard: blocks via exit 2
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib/goggins-quote.sh"
+
+MODE="${GOGGINS_MODE:-soft}"
+
+# Read hook input from stdin
+INPUT=$(cat)
+
+# Extract tool name and file path
+TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null || echo "")
+FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
+TRANSCRIPT_PATH=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('transcript_path',''))" 2>/dev/null || echo "")
+
+# Only check Write and Edit tools
+if [[ "$TOOL_NAME" != "Write" && "$TOOL_NAME" != "Edit" ]]; then
+  exit 0
+fi
+
+# If no file path, skip
+if [ -z "$FILE_PATH" ]; then
+  exit 0
+fi
+
+# New files don't need to be read first — check if file exists
+if [ ! -f "$FILE_PATH" ]; then
+  exit 0
+fi
+
+# Check if the transcript contains a prior Read of this file
+FILE_WAS_READ=false
+if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+  if grep -q "\"Read\"" "$TRANSCRIPT_PATH" 2>/dev/null; then
+    if python3 -c "
+import json, sys
+target = '${FILE_PATH}'
+with open('${TRANSCRIPT_PATH}') as f:
+    for line in f:
+        try:
+            obj = json.loads(line.strip())
+            if obj.get('tool_name') == 'Read':
+                if obj.get('tool_input',{}).get('file_path','') == target:
+                    sys.exit(0)
+        except (json.JSONDecodeError, KeyError):
+            continue
+sys.exit(1)
+" 2>/dev/null; then
+      FILE_WAS_READ=true
+    fi
+  fi
+fi
+
+if [ "$FILE_WAS_READ" = true ]; then
+  exit 0
+fi
+
+# File exists but wasn't read — violation
+QUOTE=$(goggins_quote "shortcuts")
+
+if [[ "$MODE" == "hard" ]]; then
+  echo -e "\n============================================" >&2
+  echo "  GOGGINS MODE [HARD] — ACTION BLOCKED" >&2
+  echo "============================================" >&2
+  echo -e "  \"${QUOTE}\"" >&2
+  echo "============================================" >&2
+  echo -e "\nYou're trying to edit ${FILE_PATH} without reading it first." >&2
+  echo "Read the file. Understand the code. Then edit. No blind patches." >&2
+  exit 2
+else
+  ESCAPED_QUOTE=$(echo "$QUOTE" | sed 's/"/\\"/g')
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"GOGGINS MODE WARNING: You are editing %s without reading it first. \"%s\" Read it before you change it."}}\n' "$FILE_PATH" "$ESCAPED_QUOTE"
+  exit 0
+fi
