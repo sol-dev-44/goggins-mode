@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# no-lazy-commits — PreToolUse hook for goggins-mode
+# Catches lazy patterns in staged files before git commit.
+# GOGGINS_MODE=soft (default): warns via additionalContext, exits 0
+# GOGGINS_MODE=hard: blocks via exit 2
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib/goggins-quote.sh"
+
+MODE="${GOGGINS_MODE:-soft}"
+
+# Read hook input from stdin
+INPUT=$(cat)
+
+# Extract tool name and command
+TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null || echo "")
+COMMAND=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null || echo "")
+
+# Only check Bash tool with git commit commands
+if [[ "$TOOL_NAME" != "Bash" ]]; then
+  exit 0
+fi
+
+if ! echo "$COMMAND" | grep -qE 'git\s+commit' 2>/dev/null; then
+  exit 0
+fi
+
+# Get the staged diff
+STAGED_DIFF=$(git diff --cached 2>/dev/null || echo "")
+
+# If no staged changes, nothing to check
+if [ -z "$STAGED_DIFF" ]; then
+  exit 0
+fi
+
+# Check staged diff for lazy patterns (only added lines)
+ADDED_LINES=$(echo "$STAGED_DIFF" | grep '^+' | grep -v '^+++' || echo "")
+
+LAZY_PATTERNS=(
+  '// TODO|# TODO|// FIXME|# FIXME'
+  'NotImplementedError|raise NotImplemented'
+  'for brevity|left as exercise'
+  'similar to above|same as above'
+)
+
+VIOLATIONS=()
+
+for pattern in "${LAZY_PATTERNS[@]}"; do
+  MATCHES=$(echo "$ADDED_LINES" | grep -iE "$pattern" 2>/dev/null || echo "")
+  if [ -n "$MATCHES" ]; then
+    VIOLATIONS+=("$MATCHES")
+  fi
+done
+
+if [ ${#VIOLATIONS[@]} -eq 0 ]; then
+  exit 0
+fi
+
+QUOTE=$(goggins_quote "laziness")
+
+if [[ "$MODE" == "hard" ]]; then
+  echo -e "\n============================================" >&2
+  echo "  GOGGINS MODE [HARD] — COMMIT BLOCKED" >&2
+  echo "============================================" >&2
+  echo -e "  \"${QUOTE}\"" >&2
+  echo "============================================" >&2
+  echo -e "\nLazy patterns found in staged changes:" >&2
+  for v in "${VIOLATIONS[@]}"; do
+    echo "  $v" >&2
+  done
+  echo -e "\nFix these before committing. You don't commit excuses." >&2
+  exit 2
+else
+  ESCAPED_QUOTE=$(echo "$QUOTE" | sed 's/"/\\"/g')
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"GOGGINS MODE WARNING: Lazy patterns found in staged changes. \"%s\" Clean up before committing."}}\n' "$ESCAPED_QUOTE"
+  exit 0
+fi
