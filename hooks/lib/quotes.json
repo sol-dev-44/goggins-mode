@@ -1,0 +1,54 @@
+{
+  "laziness": [
+    "Don't put a bookmark where your work ethic should be.",
+    "A TODO is a lie you tell yourself. Do it now or delete it.",
+    "You wrote a placeholder? That's not code. That's a promise you won't keep.",
+    "Stubs are for people who stub their toe and quit the race.",
+    "NotImplementedError? Not implemented EFFORT is more like it.",
+    "You're leaving TODOs like breadcrumbs back to mediocrity."
+  ],
+  "quitting": [
+    "You don't get credit for half a pullup.",
+    "Finishing 80% of the work is called quitting.",
+    "Partial implementations are partial commitments. I don't do partial.",
+    "You stopped? The code doesn't care about your feelings. Finish it.",
+    "They don't hang banners for almost. Ship the whole thing.",
+    "Your test file has zero assertions. That's not testing. That's pretending."
+  ],
+  "excuses": [
+    "Brevity is the soul of quitters.",
+    "'For brevity' means 'I got lazy.' Say it with your chest.",
+    "'Left as exercise' — exercise for WHO? You're the one with the job.",
+    "'Similar to above' — then write it. Repetition builds discipline.",
+    "'This should work' — should? SHOULD? Verify it or shut up.",
+    "'We can add tests later' — later is where discipline goes to die."
+  ],
+  "shortcuts": [
+    "You didn't read the file before editing it? You wouldn't operate without looking at the patient.",
+    "Blind patches are for people who code with their eyes closed and their ego open.",
+    "Copy-paste is not engineering. It's photocopying someone else's homework.",
+    "You took a shortcut? Shortcuts are the long way around in disguise.",
+    "The easy way out is a trap. It always costs more on the backend.",
+    "Console.log debugging left in production? Clean up after yourself. This ain't a frat house."
+  ],
+  "comfort": [
+    "Stop building a cathedral when they asked for a shelf.",
+    "You over-abstracted a 10-line function into 3 classes? That's not engineering. That's hiding.",
+    "The wall is the way. Debug it. Don't skip it.",
+    "You're avoiding the hard part. I can tell. Go back and face it.",
+    "Comfort is a liar. That easy solution is going to break at 2 AM.",
+    "Ignoring pain doesn't make you tough. It makes you stupid. Handle that error."
+  ],
+  "general": [
+    "WHO'S GONNA CARRY THE BOATS?!",
+    "Stay hard.",
+    "They don't know me, son.",
+    "You are not your compiler errors. Get up and fix them.",
+    "Suffering is the true test of code quality.",
+    "We don't rise to the level of our expectations. We fall to the level of our test coverage.",
+    "Everybody wants to be a beast, until it's time to do what beasts do.",
+    "Nobody's coming to save you. Write the code.",
+    "You're running on 40%. Time to find the other 60%.",
+    "Motivation is garbage. Discipline writes production code."
+  ]
+}
